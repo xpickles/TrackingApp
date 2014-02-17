@@ -1,3 +1,4 @@
+// Test for Russell
 // BearingFrameLayout.java
 // Rotates MapView according to device's bearing.
 package com.deitel.routetracker;
