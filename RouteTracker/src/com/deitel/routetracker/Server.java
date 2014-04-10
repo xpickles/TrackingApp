@@ -163,12 +163,12 @@ public class Server extends JFrame {
 		try {
 			// Load the driver for postgresql
 			Class.forName("org.postgresql.Driver");
-			jta.append("Driver loaded");
+			jta.append("Driver loaded\n");
 			
 			// Establish connection for database
 			connection = DriverManager.getConnection(
 					"jdbc:postgresql://localhost/trackingproto", "postgres", "postgres");
-			jta.append("Database connected");
+			jta.append("Database connected\n");
 						
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -181,16 +181,16 @@ public class Server extends JFrame {
 		try {
 			// Checks the screenname to the database to make sure
 			// screenname does not already exist
-			String checkQuery = "select screenname from users" +
-					"where users.screenname = ?";
+			String checkQuery = "select screenname from users " +
+					"where screenname = ?";
 			genPstmt = connection.prepareStatement(checkQuery);
 			genPstmt.setString(1, screenname);
-			ResultSet rset = genPstmt.executeQuery(checkQuery);
+			ResultSet rset = genPstmt.executeQuery();
 			
 			// If rset has anything in it, screenname exists
 			// Else, the screenname is added
 			if(rset.next()){
-				jta.append("User " + screenname + " already exists");
+				jta.append("User " + screenname + " already exists\n");
 				outputToClient.writeInt(-1);
 			} else {
 				
@@ -209,15 +209,15 @@ public class Server extends JFrame {
 				regPstmt.execute();
 				
 				// Prints that screen name has been added into database
-				jta.append("User " + screenname + " added to database");
+				jta.append("User " + screenname + " added to database\n");
 				outputToClient.writeInt(0);
 			}
 			
 		} catch (SQLException ex) {
-			jta.append("Error in registering User " + screenname);
+			jta.append("Error in registering User " + screenname + "\n");
             ex.printStackTrace();
 		} catch (Exception ex) {
-			jta.append("Unknown error has occur");
+			jta.append("Unknown error has occur\n");
 			ex.printStackTrace();
 		}
 	}
