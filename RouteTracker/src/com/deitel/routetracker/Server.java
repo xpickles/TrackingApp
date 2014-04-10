@@ -126,6 +126,13 @@ public class Server extends JFrame {
 						break;
 					case 2:  // SignIn User
 						
+						//Reads users information from client
+						screenname = inputFromClient.readUTF();
+						password = inputFromClient.readUTF();
+						
+						//SignIn User
+						signInUser(screenname, password,outputToClient);
+						
 						break;
 					case 3:  // Request Friend
 						
@@ -228,6 +235,26 @@ public class Server extends JFrame {
 		} catch (Exception ex) {
 			jta.append("Unknown error has occur\n");
 			ex.printStackTrace();
+		}
+	}
+	
+	public void signInUser(String screenname, String password, DataOutputStream outputToClient){
+		String checkQuery = "select screenname from users " +
+				"where screenname = ? "+
+				"and password = ?";
+		genPstmt = connection.prepareStatement(checkQuery);
+		genPstmt.setString(1, screenname);
+		genPstmt.setString(2, password);
+		ResultSet rset = genPstmt.executeQuery();
+		
+		// If rset has anything in it, log in
+		// Else, the screenname does not exist, don not log in
+		if(rset.next()){
+			jta.append("signing in " + screenname + "...\n");
+			outputToClient.writeInt(0);
+		} else {
+			jta.append("user " + screenname + "does not exist\n");
+			outputToClient.writeInt(-1);
 		}
 	}
 	
