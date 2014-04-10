@@ -121,12 +121,13 @@ public class Server extends JFrame {
 							regPstmt.setString(5,  lastName);
 							
 							// Executes query
-							ResultSet rset = regPstmt.executeQuery();
+							regPstmt.execute();
 							
 							jta.append("User " + screenname + " added to database");
 							
 						} catch (SQLException ex) {
 							jta.append("Error in registering User " + screenname);
+                            ex.printStackTrace();
 						}
 						break;
 					case 2:  // SignIn User
@@ -177,7 +178,7 @@ public class Server extends JFrame {
 					"jdbc:postgresql://localhost/trackingproto", "postgres", "postgres");
 			System.out.println("Database connected");
 			
-			String registerString = "INSERT INTO user VALUES (?, ?, ?, ?, ?, NULL, NULL) ";
+			String registerString = "INSERT INTO users VALUES (?, ?, ?, ?, ?, NULL, NULL) ";
 			regPstmt = connection.prepareStatement(registerString);
 			
 		} catch (Exception ex) {
