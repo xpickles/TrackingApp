@@ -95,6 +95,7 @@ public class Server extends JFrame {
 			int birth_year;
 			String firstName;
 			String lastName;
+			String friendScreename;
 			
 			try {
 				
@@ -132,6 +133,13 @@ public class Server extends JFrame {
 						
 						break;
 					case 5:  // Delete Friend
+						
+						// Reads users information from client
+						screenname = inputFromClient.readUTF();
+						friendScreenname = inputFromClient.readUTF();
+						
+						// Delete Friend
+						deleteFriend(screenName, friendScreenname, outputToClient);
 						
 						break;
 					case 6:  // Respond to Location Request
@@ -212,6 +220,41 @@ public class Server extends JFrame {
 				jta.append("User " + screenname + " added to database\n");
 				outputToClient.writeInt(0);
 			}
+			
+		} catch (SQLException ex) {
+			jta.append("Error in registering User " + screenname + "\n");
+            ex.printStackTrace();
+		} catch (Exception ex) {
+			jta.append("Unknown error has occur\n");
+			ex.printStackTrace();
+		}
+	}
+	
+	public void deleteFriend(String screenname, String friendScreenname,
+			DataOutputStream outputToClient){
+		try {	
+			
+			String deleteQuery = "select screenname from users " +
+					"where screenname1 = ? AND screenname2 = ?";
+			genPstmt = connection.prepareStatement(deleteQuery);
+			
+			if(screenname.compareTo(friendScreenname) < 0){
+				genPstmt.setString(1, screenname);
+				genPstmt.setString(2, friendScreenname);
+			}
+			else{
+				genPstmt.setString(1, friendScreenname);
+				genPstmt.setString(2, screenname);				
+			}
+			
+			int deletes = genPstmt.executeUpdate();			
+			
+			if(deletes > 0)
+				jta.append("User " + screenname + " deleted " + friendScreenname + "\n");
+			else 
+				jta.append("User " + screenname + " failed to delete " + friendScreenname + "because he was not friends\n");
+			
+			outputToClient.writeInt(0);
 			
 		} catch (SQLException ex) {
 			jta.append("Error in registering User " + screenname + "\n");
