@@ -12,6 +12,8 @@ public class Server extends JFrame {
 	private JTextArea jta = new JTextArea();
 	private int clientNo;  // Keeps track of clients coming into server
 	private int port = 8081; // Allows for quick access to port number for changing
+	private Connection connection; // Setting up the connection for the database
+	private PreparedStatement genPstmt; // Generic statement for accessing database
 	private PreparedStatement regPstmt; // Accessing database for registering
 	private PreparedStatement signPstmt; // Accessing database for signing in
 	private PreparedStatement reqFPstmt; // Accessing database for requesting friend
@@ -71,7 +73,6 @@ public class Server extends JFrame {
 
 				// Increases client number to be ready for next client
 				clientNo++;
-
 			}
 		}
 
@@ -89,6 +90,12 @@ public class Server extends JFrame {
 		}
 		
 		public void run() {
+			String screenname;
+			String password;
+			int birth_year;
+			String firstName;
+			String lastName;
+			
 			try {
 				
 				// Creates stream for data from the client
@@ -105,30 +112,15 @@ public class Server extends JFrame {
 					case 1:  // Register User
 						
 						// Reads users information from client
-						String screenname = inputFromClient.readUTF();
-						String password = inputFromClient.readUTF();
-						int birth_year = inputFromClient.readInt();
-						String firstName = inputFromClient.readUTF();
-						String lastName = inputFromClient.readUTF();
+						screenname = inputFromClient.readUTF();
+						password = inputFromClient.readUTF();
+						birth_year = inputFromClient.readInt();
+						firstName = inputFromClient.readUTF();
+						lastName = inputFromClient.readUTF();
 						
-						try {
-							
-							// Adds values to prepared statements
-							regPstmt.setString(1,  screenname);
-							regPstmt.setString(2,  password);
-							regPstmt.setInt(3, birth_year);
-							regPstmt.setString(4,  firstName);
-							regPstmt.setString(5,  lastName);
-							
-							// Executes query
-							regPstmt.execute();
-							
-							jta.append("User " + screenname + " added to database");
-							
-						} catch (SQLException ex) {
-							jta.append("Error in registering User " + screenname);
-                            ex.printStackTrace();
-						}
+						// Register User
+						registerUser(screenname, password, birth_year, firstName, lastName,
+								outputToClient);
 						break;
 					case 2:  // SignIn User
 						
@@ -171,17 +163,61 @@ public class Server extends JFrame {
 		try {
 			// Load the driver for postgresql
 			Class.forName("org.postgresql.Driver");
-			System.out.println("Driver loaded");
+			jta.append("Driver loaded");
 			
 			// Establish connection for database
-			Connection connection = DriverManager.getConnection(
+			connection = DriverManager.getConnection(
 					"jdbc:postgresql://localhost/trackingproto", "postgres", "postgres");
-			System.out.println("Database connected");
-			
-			String registerString = "INSERT INTO users VALUES (?, ?, ?, ?, ?, NULL, NULL) ";
-			regPstmt = connection.prepareStatement(registerString);
-			
+			jta.append("Database connected");
+						
 		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+	}
+	
+	public void registerUser(String screenname, String password, int birth_year,
+			String firstName, String lastName, DataOutputStream outputToClient) {
+
+		try {
+			// Checks the screenname to the database to make sure
+			// screenname does not already exist
+			String checkQuery = "select screenname from users" +
+					"where users.screenname = ?";
+			genPstmt = connection.prepareStatement(checkQuery);
+			genPstmt.setString(1, screenname);
+			ResultSet rset = genPstmt.executeQuery(checkQuery);
+			
+			// If rset has anything in it, screenname exists
+			// Else, the screenname is added
+			if(rset.next()){
+				jta.append("User " + screenname + " already exists");
+				outputToClient.writeInt(-1);
+			} else {
+				
+				// Prepares the statement for Insert
+				String registerString = "INSERT INTO users VALUES (?, ?, ?, ?, ?, NULL, NULL) ";
+				regPstmt = connection.prepareStatement(registerString);
+				
+				// Adds values to prepared statements
+				regPstmt.setString(1,  screenname);
+				regPstmt.setString(2,  password);
+				regPstmt.setInt(3, birth_year);
+				regPstmt.setString(4,  firstName);
+				regPstmt.setString(5,  lastName);
+				
+				// Executes query
+				regPstmt.execute();
+				
+				// Prints that screen name has been added into database
+				jta.append("User " + screenname + " added to database");
+				outputToClient.writeInt(0);
+			}
+			
+		} catch (SQLException ex) {
+			jta.append("Error in registering User " + screenname);
+            ex.printStackTrace();
+		} catch (Exception ex) {
+			jta.append("Unknown error has occur");
 			ex.printStackTrace();
 		}
 	}
