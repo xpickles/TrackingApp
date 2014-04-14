@@ -1,4 +1,3 @@
-//hey yo
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -14,14 +13,6 @@ public class Server extends JFrame {
 	private int clientNo;  // Keeps track of clients coming into server
 	private int port = 8081; // Allows for quick access to port number for changing
 	private Connection connection; // Setting up the connection for the database
-	private PreparedStatement genPstmt; // Generic statement for accessing database
-	private PreparedStatement regPstmt; // Accessing database for registering
-	private PreparedStatement signPstmt; // Accessing database for signing in
-	private PreparedStatement reqFPstmt; // Accessing database for requesting friend
-	private PreparedStatement reqLPstmt; // Accessing database for requesting location
-	private PreparedStatement delPstmt; // Accessing database for deleting friend
-	private PreparedStatement resLPstmt; // Accessing database for responding to location
-	private PreparedStatement resFPstmt; // Accessing database for responding to friend 
 
 	public static void main(String[] args) {
 		new Server();
@@ -85,27 +76,30 @@ public class Server extends JFrame {
 	// Thread creation and implementation
 	class HandleAClient implements Runnable {
 		private Socket socket;
-
+		private PreparedStatement genPstmt; // Generic statement for accessing database
+		private DataInputStream inputFromClient;
+		private DataOutputStream outputToClient;
+		private String screenname;
+		private String password;
+		private int birth_year;
+		private String firstName;
+		private String lastName;
+		private String friendScreenname;
+		
 		public HandleAClient(Socket socket) {
 			this.socket = socket;
 		}
 		
 		public void run() {
-			String screenname;
-			String password;
-			int birth_year;
-			String firstName;
-			String lastName;
-			String friendScreename;
 			
 			try {
 				
 				// Creates stream for data from the client
-				DataInputStream inputFromClient = new DataInputStream(
+				inputFromClient = new DataInputStream(
 						socket.getInputStream());
 				
 				// Creates stream for data back to the client
-				DataOutputStream outputToClient = new DataOutputStream(
+				outputToClient = new DataOutputStream(
 						socket.getOutputStream());
 
 				int choice = inputFromClient.readInt();
@@ -121,8 +115,7 @@ public class Server extends JFrame {
 						lastName = inputFromClient.readUTF();
 						
 						// Register User
-						registerUser(screenname, password, birth_year, firstName, lastName,
-								outputToClient);
+						registerUser();
 						break;
 					case 2:  // SignIn User
 						
@@ -131,14 +124,14 @@ public class Server extends JFrame {
 						password = inputFromClient.readUTF();
 						
 						//SignIn User
-						signInUser(screenname, password,outputToClient);
+						signInUser();
 						
 						break;
 					case 3:  // Request Friend
-						
+						//TODO
 						break;
 					case 4:  // Request Location
-						
+						//TODO
 						break;
 					case 5:  // Delete Friend
 						
@@ -147,23 +140,23 @@ public class Server extends JFrame {
 						friendScreenname = inputFromClient.readUTF();
 						
 						// Delete Friend
-						deleteFriend(screenName, friendScreenname, outputToClient);
+						deleteFriend();
 						
 						break;
 					case 6:  // Respond to Location Request
-						
+						//TODO
 						break;
 					case 7:  // Respond to Friend Request
-						
+						//TODO
 						break;
 					case 8:  // Get Friends
-						
+						//TODO
 						break;
 					case 9:  // Get Notifications
-						
+						//TODO
 						break;
 					case 10:  // Send Location
-						
+						//TODO
 						break;
 				}
 				
@@ -172,6 +165,149 @@ public class Server extends JFrame {
 			catch(IOException e) {
 				System.err.println(e);
 			}
+		}
+		
+		public void registerUser() {
+			
+			try {
+				// Checks the screenname to the database to make sure
+				// screenname does not already exist
+				String checkQuery = "select screenname from users " +
+						"where screenname = ?";
+				genPstmt = connection.prepareStatement(checkQuery);
+				genPstmt.setString(1, screenname);
+				ResultSet rset = genPstmt.executeQuery();
+				
+				// If rset has anything in it, screenname exists
+				// Else, the screenname is added
+				if(rset.next()){
+					jta.append("User " + screenname + " already exists\n");
+					outputToClient.writeInt(-1);
+				} else {
+					
+					// Prepares the statement for Insert
+					String registerString = "INSERT INTO users VALUES (?, ?, ?, ?, ?, NULL, NULL) ";
+					genPstmt = connection.prepareStatement(registerString);
+					
+					// Adds values to prepared statements
+					genPstmt.setString(1,  screenname);
+					genPstmt.setString(2,  password);
+					genPstmt.setInt(3, birth_year);
+					genPstmt.setString(4,  firstName);
+					genPstmt.setString(5,  lastName);
+					
+					// Executes query
+					genPstmt.execute();
+					
+					// Prints that screen name has been added into database
+					jta.append("User " + screenname + " added to database\n");
+					outputToClient.writeInt(0);
+				}
+				
+			} catch (SQLException ex) {
+				jta.append("Error in registering User " + screenname + "\n");
+	            ex.printStackTrace();
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+			}
+		}
+		
+		public void signInUser(){
+			try{
+				String checkQuery = "select screenname from users " +
+					"where screenname = ? "+
+					"and password = ?";
+				genPstmt = connection.prepareStatement(checkQuery);
+				genPstmt.setString(1, screenname);
+				genPstmt.setString(2, password);
+				ResultSet rset = genPstmt.executeQuery();
+				
+				// If rset has anything in it, log in
+				// Else, the screenname does not exist, do not log in
+				if(rset.next()){
+					jta.append("signing in " + screenname + "...\n");
+					outputToClient.writeInt(0);
+				} else {
+					jta.append("user " + screenname + "does not exist\n");
+					outputToClient.writeInt(-1);
+				}
+			} catch (SQLException ex) {
+				jta.append("Error in signing in User " + screenname + "\n");
+	            ex.printStackTrace();
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+			}
+		}
+		
+		public void requestFriend() {
+			//TODO
+		}
+		
+		public void requestLocation() {
+			//TODO
+		}
+		
+		public void deleteFriend(){
+			try {	
+				
+				String deleteQuery = "select screenname from users " +
+						"where screenname1 = ? AND screenname2 = ?";
+				genPstmt = connection.prepareStatement(deleteQuery);
+				
+				if(screenname.compareTo(friendScreenname) < 0){
+					genPstmt.setString(1, screenname);
+					genPstmt.setString(2, friendScreenname);
+				}
+				else{
+					genPstmt.setString(1, friendScreenname);
+					genPstmt.setString(2, screenname);				
+				}
+				
+				int deletes = genPstmt.executeUpdate();			
+				
+				if(deletes > 0)
+					jta.append("User " + screenname + " deleted " + friendScreenname + "\n");
+				else 
+					jta.append("User " + screenname + " failed to delete " + friendScreenname + "because he was not friends\n");
+				
+				outputToClient.writeInt(0);
+				
+			} catch (SQLException ex) {
+				jta.append("Error in deleting User " + screenname + "\n");
+	            ex.printStackTrace();
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+			}
+		}
+		
+		public void respondLocation() {
+			//TODO
+		}
+		
+		public void respondFriend() {
+			//TODO
+		}
+		
+		public void getFriends() {
+			//TODO
+			
+			/* String result = ""
+			 * Query friends table 
+			 * 1st: query for screenname on right side ordered by alphabet
+			 * result += rset.next() + "//"
+			 * 2nd: query for screenname on left side ordered by alphabet
+			 * result += rset.next() + "//"*/
+		}
+		
+		public void getNotifications() {
+			//TODO
+		}
+		
+		public void sendLocation() {
+			//TODO
 		}
 	}
 	
@@ -191,105 +327,4 @@ public class Server extends JFrame {
 		}
 	}
 	
-	public void registerUser(String screenname, String password, int birth_year,
-			String firstName, String lastName, DataOutputStream outputToClient) {
-
-		try {
-			// Checks the screenname to the database to make sure
-			// screenname does not already exist
-			String checkQuery = "select screenname from users " +
-					"where screenname = ?";
-			genPstmt = connection.prepareStatement(checkQuery);
-			genPstmt.setString(1, screenname);
-			ResultSet rset = genPstmt.executeQuery();
-			
-			// If rset has anything in it, screenname exists
-			// Else, the screenname is added
-			if(rset.next()){
-				jta.append("User " + screenname + " already exists\n");
-				outputToClient.writeInt(-1);
-			} else {
-				
-				// Prepares the statement for Insert
-				String registerString = "INSERT INTO users VALUES (?, ?, ?, ?, ?, NULL, NULL) ";
-				regPstmt = connection.prepareStatement(registerString);
-				
-				// Adds values to prepared statements
-				regPstmt.setString(1,  screenname);
-				regPstmt.setString(2,  password);
-				regPstmt.setInt(3, birth_year);
-				regPstmt.setString(4,  firstName);
-				regPstmt.setString(5,  lastName);
-				
-				// Executes query
-				regPstmt.execute();
-				
-				// Prints that screen name has been added into database
-				jta.append("User " + screenname + " added to database\n");
-				outputToClient.writeInt(0);
-			}
-			
-		} catch (SQLException ex) {
-			jta.append("Error in registering User " + screenname + "\n");
-            ex.printStackTrace();
-		} catch (Exception ex) {
-			jta.append("Unknown error has occur\n");
-			ex.printStackTrace();
-		}
-	}
-	
-	public void signInUser(String screenname, String password, DataOutputStream outputToClient){
-		String checkQuery = "select screenname from users " +
-				"where screenname = ? "+
-				"and password = ?";
-		genPstmt = connection.prepareStatement(checkQuery);
-		genPstmt.setString(1, screenname);
-		genPstmt.setString(2, password);
-		ResultSet rset = genPstmt.executeQuery();
-		
-		// If rset has anything in it, log in
-		// Else, the screenname does not exist, don not log in
-		if(rset.next()){
-			jta.append("signing in " + screenname + "...\n");
-			outputToClient.writeInt(0);
-		} else {
-			jta.append("user " + screenname + "does not exist\n");
-			outputToClient.writeInt(-1);
-		}
-	}
-	
-	public void deleteFriend(String screenname, String friendScreenname,
-			DataOutputStream outputToClient){
-		try {	
-			
-			String deleteQuery = "select screenname from users " +
-					"where screenname1 = ? AND screenname2 = ?";
-			genPstmt = connection.prepareStatement(deleteQuery);
-			
-			if(screenname.compareTo(friendScreenname) < 0){
-				genPstmt.setString(1, screenname);
-				genPstmt.setString(2, friendScreenname);
-			}
-			else{
-				genPstmt.setString(1, friendScreenname);
-				genPstmt.setString(2, screenname);				
-			}
-			
-			int deletes = genPstmt.executeUpdate();			
-			
-			if(deletes > 0)
-				jta.append("User " + screenname + " deleted " + friendScreenname + "\n");
-			else 
-				jta.append("User " + screenname + " failed to delete " + friendScreenname + "because he was not friends\n");
-			
-			outputToClient.writeInt(0);
-			
-		} catch (SQLException ex) {
-			jta.append("Error in registering User " + screenname + "\n");
-            ex.printStackTrace();
-		} catch (Exception ex) {
-			jta.append("Unknown error has occur\n");
-			ex.printStackTrace();
-		}
-	}
 }
