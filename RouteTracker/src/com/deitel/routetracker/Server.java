@@ -158,6 +158,11 @@ public class Server extends JFrame {
 					case 10:  // Send Location
 						//TODO
 						break;
+						
+					case 11:
+						getFriends();
+						getNotifications();
+						sendLocation();
 				}
 				
 				
