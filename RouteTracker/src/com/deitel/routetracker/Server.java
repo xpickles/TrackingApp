@@ -128,8 +128,15 @@ public class Server extends JFrame {
 						
 						break;
 					case 3:  // Request Friend
-						//TODO
-						break;
+						
+						// Reads users information from client
+						screenname = inputFromClient.readUTF();
+						friendScreenname = inputFromClient.readUTF();
+						
+						// Delete Friend
+						requestFriend();
+						
+						break;						break;
 					case 4:  // Request Location
 						//TODO
 						break;
@@ -247,7 +254,88 @@ public class Server extends JFrame {
 		}
 		
 		public void requestFriend() {
-			//TODO
+
+			try {
+				// Checks the screenname to the database to make sure
+				// screenname exist
+				String checkQuery = "select screenname from users " +
+						"where screenname = ?";
+				genPstmt = connection.prepareStatement(checkQuery);
+				genPstmt.setString(1, screenname);
+				ResultSet rset = genPstmt.executeQuery();
+				
+				// If rset has anything in it, screenname exists
+				// Else, the screenname does not exist
+				if(rset.next()){
+					//check for request in request table
+					String checkrequestQuery = "select friendScreenname from friend_request " +
+							"where friendScreenname = ? " +
+							"and screenname = ?";
+					genPstmt = connection.prepareStatement(checkrequestQuery);
+					genPstmt.setString(1, screenname);
+					ResultSet rsett = genPstmt.executeQuery();
+					
+					// If rsett has anything in it, friend_request exists
+					// Else, the friend_request does not exist
+					if(rsett.next()){
+						// Prints that screen name has been added into database
+						jta.append("User " + screenname + " has already requested user" + friendScreenname + "\n");
+						outputToClient.writeInt(-1);
+					}else{
+						//check for request in request table
+						String checkrequestFromFrinedQuery = "select friendScreenname from friend_request " +
+								"where friendScreenname = screenname " +
+								"and screenname = friendScreenname";
+						genPstmt = connection.prepareStatement(checkrequestFromFrinedQuery);
+						genPstmt.setString(1, screenname);
+						ResultSet rsettt = genPstmt.executeQuery();
+						
+						// If rsettt has anything in it, friend_request exists
+						// Else, the friend_request does not exist
+						if(rsettt.next()){
+							// Prints that screen name has been added into the friends table
+							jta.append("User " + screenname + " is friends with user" + friendScreenname + "\n");
+							// Prepares the statement for Insert
+							String registerString = "INSERT INTO friends_with VALUES (?, ?) ";
+							genPstmt = connection.prepareStatement(registerString);
+							
+							// Adds values to prepared statements
+							genPstmt.setString(1,  screenname);
+							genPstmt.setString(2,  friendScreenname);
+							
+							// Executes query
+							genPstmt.execute();
+							outputToClient.writeInt(0);
+						}else{
+							// Prints that screen name has been added into the request table
+							jta.append("User " + screenname + " has requested user " + friendScreenname + " to be his friend\n");
+							// Prepares the statement for Insert
+							String registerString = "INSERT INTO friends_request VALUES (?, ?) ";
+							genPstmt = connection.prepareStatement(registerString);
+							
+							// Adds values to prepared statements
+							genPstmt.setString(1,  screenname);
+							genPstmt.setString(2,  friendScreenname);
+							
+							// Executes query
+							genPstmt.execute();
+							outputToClient.writeInt(0);
+						}
+					}
+
+				} else {
+					// Prints that screen name has been added into database
+					jta.append("User " + screenname + " does not exist\n");
+					outputToClient.writeInt(-1);
+				}
+				
+			} catch (SQLException ex) {
+				jta.append("Error in registering User " + screenname + "\n");
+	            ex.printStackTrace();
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+			}
 		}
 		
 		public void requestLocation() {
