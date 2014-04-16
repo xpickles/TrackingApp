@@ -85,6 +85,7 @@ public class Server extends JFrame {
 		private String firstName;
 		private String lastName;
 		private String friendScreenname;
+		private int outputInt;
 		
 		public HandleAClient(Socket socket) {
 			this.socket = socket;
@@ -136,7 +137,7 @@ public class Server extends JFrame {
 						// Delete Friend
 						requestFriend();
 						
-						break;						break;
+						break;
 					case 4:  // Request Location
 						//TODO
 						break;
@@ -194,7 +195,7 @@ public class Server extends JFrame {
 				// Else, the screenname is added
 				if(rset.next()){
 					jta.append("User " + screenname + " already exists\n");
-					outputToClient.writeInt(-1);
+					outputInt = -1;
 				} else {
 					
 					// Prepares the statement for Insert
@@ -213,15 +214,23 @@ public class Server extends JFrame {
 					
 					// Prints that screen name has been added into database
 					jta.append("User " + screenname + " added to database\n");
-					outputToClient.writeInt(0);
+					outputInt = 0;
 				}
 				
 			} catch (SQLException ex) {
 				jta.append("Error in registering User " + screenname + "\n");
 	            ex.printStackTrace();
+	            outputInt = -1;
 			} catch (Exception ex) {
 				jta.append("Unknown error has occur\n");
 				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+				outputToClient.writeInt(outputInt);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
 			}
 		}
 		
@@ -239,17 +248,25 @@ public class Server extends JFrame {
 				// Else, the screenname does not exist, do not log in
 				if(rset.next()){
 					jta.append("signing in " + screenname + "...\n");
-					outputToClient.writeInt(0);
+					outputInt = 0;
 				} else {
 					jta.append("user " + screenname + "does not exist\n");
-					outputToClient.writeInt(-1);
+					outputInt = -1;
 				}
 			} catch (SQLException ex) {
-				jta.append("Error in signing in User " + screenname + "\n");
+				jta.append("Error in registering User " + screenname + "\n");
 	            ex.printStackTrace();
+	            outputInt = -1;
 			} catch (Exception ex) {
 				jta.append("Unknown error has occur\n");
 				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+				outputToClient.writeInt(outputInt);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
 			}
 		}
 		
@@ -261,51 +278,59 @@ public class Server extends JFrame {
 				String checkQuery = "select screenname from users " +
 						"where screenname = ?";
 				genPstmt = connection.prepareStatement(checkQuery);
-				genPstmt.setString(1, screenname);
-				ResultSet rset = genPstmt.executeQuery();
+				genPstmt.setString(1, friendScreenname);
+				ResultSet userExists = genPstmt.executeQuery();
 				
 				// If rset has anything in it, screenname exists
 				// Else, the screenname does not exist
-				if(rset.next()){
+				if(userExists.next()){
 					//check for request in request table
-					String checkrequestQuery = "select friendScreenname from friend_request " +
-							"where friendScreenname = ? " +
-							"and screenname = ?";
+					String checkrequestQuery = "select requester from friend_request " +
+							"where requester = ? " +
+							"and requestee = ?";
 					genPstmt = connection.prepareStatement(checkrequestQuery);
 					genPstmt.setString(1, screenname);
-					ResultSet rsett = genPstmt.executeQuery();
+					genPstmt.setString(2, friendScreenname);
+					ResultSet requestExists = genPstmt.executeQuery();
 					
 					// If rsett has anything in it, friend_request exists
 					// Else, the friend_request does not exist
-					if(rsett.next()){
+					if(requestExists.next()){
 						// Prints that screen name has been added into database
-						jta.append("User " + screenname + " has already requested user" + friendScreenname + "\n");
-						outputToClient.writeInt(-1);
+						jta.append("User " + screenname + " has already requested user " + friendScreenname + "\n");
+						outputInt = -1;
 					}else{
 						//check for request in request table
-						String checkrequestFromFrinedQuery = "select friendScreenname from friend_request " +
-								"where friendScreenname = screenname " +
-								"and screenname = friendScreenname";
-						genPstmt = connection.prepareStatement(checkrequestFromFrinedQuery);
-						genPstmt.setString(1, screenname);
-						ResultSet rsettt = genPstmt.executeQuery();
+						String checkrequestFromFriendQuery = "select * from friend_request " +
+								"where requester = ? " +
+								"and requestee = ?";
+						genPstmt = connection.prepareStatement(checkrequestFromFriendQuery);
+						genPstmt.setString(1, friendScreenname);
+						genPstmt.setString(2, screenname);
+						ResultSet requestExistsFlipped = genPstmt.executeQuery();
 						
 						// If rsettt has anything in it, friend_request exists
 						// Else, the friend_request does not exist
-						if(rsettt.next()){
+						if(requestExistsFlipped.next()){
 							// Prints that screen name has been added into the friends table
 							jta.append("User " + screenname + " is friends with user" + friendScreenname + "\n");
 							// Prepares the statement for Insert
 							String registerString = "INSERT INTO friends_with VALUES (?, ?) ";
 							genPstmt = connection.prepareStatement(registerString);
 							
-							// Adds values to prepared statements
-							genPstmt.setString(1,  screenname);
-							genPstmt.setString(2,  friendScreenname);
+							if (screenname.compareTo(friendScreenname) > 0) {
+								// Adds values to prepared statements
+								genPstmt.setString(1,  screenname);
+								genPstmt.setString(2,  friendScreenname);
+							} else {
+								// Adds values to prepared statements
+								genPstmt.setString(1,  friendScreenname);
+								genPstmt.setString(2,  screenname);
+							}
 							
 							// Executes query
 							genPstmt.execute();
-							outputToClient.writeInt(0);
+							outputInt = 0;
 						}else{
 							// Prints that screen name has been added into the request table
 							jta.append("User " + screenname + " has requested user " + friendScreenname + " to be his friend\n");
@@ -319,22 +344,30 @@ public class Server extends JFrame {
 							
 							// Executes query
 							genPstmt.execute();
-							outputToClient.writeInt(0);
+							outputInt = 0;
 						}
 					}
 
 				} else {
 					// Prints that screen name has been added into database
-					jta.append("User " + screenname + " does not exist\n");
-					outputToClient.writeInt(-1);
+					jta.append("User " + friendScreenname + " does not exist\n");
+					outputInt = -1;
 				}
 				
 			} catch (SQLException ex) {
 				jta.append("Error in registering User " + screenname + "\n");
 	            ex.printStackTrace();
+	            outputInt = -1;
 			} catch (Exception ex) {
 				jta.append("Unknown error has occur\n");
 				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+				outputToClient.writeInt(outputInt);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
 			}
 		}
 		
@@ -365,14 +398,22 @@ public class Server extends JFrame {
 				else 
 					jta.append("User " + screenname + " failed to delete " + friendScreenname + "because he was not friends\n");
 				
-				outputToClient.writeInt(0);
+				outputInt = 0;
 				
 			} catch (SQLException ex) {
-				jta.append("Error in deleting User " + screenname + "\n");
+				jta.append("Error in registering User " + screenname + "\n");
 	            ex.printStackTrace();
+	            outputInt = -1;
 			} catch (Exception ex) {
 				jta.append("Unknown error has occur\n");
 				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+				outputToClient.writeInt(outputInt);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
 			}
 		}
 		
@@ -419,5 +460,4 @@ public class Server extends JFrame {
 			ex.printStackTrace();
 		}
 	}
-	
 }
