@@ -84,8 +84,11 @@ public class Server extends JFrame {
 		private int birth_year;
 		private String firstName;
 		private String lastName;
+		private double lastKnownLat;
+		private double lastKnownLong;
 		private String friendScreenname;
 		private int outputInt;
+		private boolean response;
 		
 		public HandleAClient(Socket socket) {
 			this.socket = socket;
@@ -134,12 +137,18 @@ public class Server extends JFrame {
 						screenname = inputFromClient.readUTF();
 						friendScreenname = inputFromClient.readUTF();
 						
-						// Delete Friend
+						// Request Friend
 						requestFriend();
 						
 						break;
 					case 4:  // Request Location
 						//TODO
+						// Reads users information from client
+						screenname = inputFromClient.readUTF();
+						friendScreenname = inputFromClient.readUTF();
+						
+						requestLocation();
+						
 						break;
 					case 5:  // Delete Friend
 						
@@ -153,24 +162,53 @@ public class Server extends JFrame {
 						break;
 					case 6:  // Respond to Location Request
 						//TODO
+						screenname = inputFromClient.readUTF();
+						friendScreenname = inputFromClient.readUTF();
+						lastKnownLat = inputFromClient.readDouble();
+						lastKnownLong = inputFromClient.readDouble();
+						response = inputFromClient.readBoolean();
+						
+						respondLocation();
+						
 						break;
 					case 7:  // Respond to Friend Request
 						//TODO
+						screenname = inputFromClient.readUTF();
+						friendScreenname = inputFromClient.readUTF();
+						response = inputFromClient.readBoolean();
+						
+						respondFriend();
+						
 						break;
 					case 8:  // Get Friends
 						//TODO
+						
+						screenname = inputFromClient.readUTF();
+						
+						getFriends();
+						
 						break;
 					case 9:  // Get Notifications
 						//TODO
+						
+						screenname = inputFromClient.readUTF();
+						
+						getNotifications();
+						
 						break;
-					case 10:  // Send Location
+					case 10:  // Get Location
 						//TODO
+						
+						screenname = inputFromClient.readUTF();
+						
+						getLocation();
+						
 						break;
 						
-					case 11:
+					case 11: // Done as soon logged in
 						getFriends();
 						getNotifications();
-						sendLocation();
+						getLocation();
 				}
 				
 				
@@ -318,7 +356,7 @@ public class Server extends JFrame {
 							String registerString = "INSERT INTO friends_with VALUES (?, ?) ";
 							genPstmt = connection.prepareStatement(registerString);
 							
-							if (screenname.compareTo(friendScreenname) > 0) {
+							if (screenname.compareTo(friendScreenname) < 0) {
 								// Adds values to prepared statements
 								genPstmt.setString(1,  screenname);
 								genPstmt.setString(2,  friendScreenname);
@@ -373,6 +411,33 @@ public class Server extends JFrame {
 		
 		public void requestLocation() {
 			//TODO
+			try {
+				String checkQuery = "Select * from location_request " +
+					"where requester = ? and requestee = ?";
+				genPstmt = connection.prepareStatement(checkQuery);
+				genPstmt.setString(1, screenname);
+				genPstmt.setString(2, friendScreenname);
+				ResultSet requestExists = genPstmt.executeQuery();
+				
+				if (!requestExists.next()) {
+					String addRequest = "Insert ";
+				}
+				
+			} catch (SQLException ex) {
+				jta.append("Error in registering User " + screenname + "\n");
+				ex.printStackTrace();
+				outputInt = -1;
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+					outputToClient.writeInt(outputInt);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
 		}
 		
 		public void deleteFriend(){
@@ -418,11 +483,58 @@ public class Server extends JFrame {
 		}
 		
 		public void respondLocation() {
-			//TODO
+			//TODO Russell 
 		}
 		
 		public void respondFriend() {
-			//TODO
+			try {
+				// Accepts request
+				if (response) {
+					String respondString = "INSERT INTO friends_with VALUES (?, ?) ";
+					genPstmt = connection.prepareStatement(respondString);
+					
+					// Adds friends into table in compared alphabetically
+					if (screenname.compareTo(friendScreenname) < 0) {
+						genPstmt.setString(1,  screenname);
+						genPstmt.setString(2,  friendScreenname);
+					} else {
+						genPstmt.setString(1,  friendScreenname);
+						genPstmt.setString(2,  screenname);
+					}
+					
+					// Executes query
+					genPstmt.execute();
+					jta.append(screenname + " is now friends with " + 
+							friendScreenname);
+					outputInt = 0;
+				} 
+				
+				// Accepted or Denied, Request is Deleted
+				String deleteRequest = "Delete from friend_request " +
+					"where requester = ? and requestee = ?";
+				genPstmt = connection.prepareStatement(deleteRequest);
+				genPstmt.setString(1, friendScreenname);
+				genPstmt.setString(2, screenname);
+				genPstmt.execute();
+				outputInt = 0;
+				jta.append(screenname + " denied being friends with " + 
+						friendScreenname);
+				
+			} catch (SQLException ex) {
+				jta.append("Error in registering User " + screenname + "\n");
+	            ex.printStackTrace();
+	            outputInt = -1;
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+				outputToClient.writeInt(outputInt);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
 		}
 		
 		public void getFriends() {
@@ -440,7 +552,7 @@ public class Server extends JFrame {
 			//TODO
 		}
 		
-		public void sendLocation() {
+		public void getLocation() {
 			//TODO
 		}
 	}
