@@ -160,7 +160,7 @@ public class Server extends JFrame {
 						deleteFriend();
 						
 						break;
-					case 6:  // Respond to Location Request
+					case 6:  // Respond to Location Request russell
 						//TODO
 						screenname = inputFromClient.readUTF();
 						friendScreenname = inputFromClient.readUTF();
@@ -483,7 +483,72 @@ public class Server extends JFrame {
 		}
 		
 		public void respondLocation() {
-			//TODO Russell 
+			//check that requestee and requester are still friends
+			String checkrequestQuery = "select requester from friends_with " +
+					"where screenname = ? " +
+					"and friendScreenname = ?";
+			genPstmt = connection.prepareStatement(checkrequestQuery);
+			genPstmt.setString(1, screenname);
+			genPstmt.setString(2, friendScreenname);
+			ResultSet stillFriends1 = genPstmt.executeQuery();
+			
+			//check other side of the table?????????
+			String checkrequestQuery = "select requester from friends_with " +
+					"where screenname = ? " +
+					"and friendScreenname = ?";
+			genPstmt = connection.prepareStatement(checkrequestQuery);
+			genPstmt.setString(1, friendScreenname);
+			genPstmt.setString(2, screenname);
+			ResultSet stillFriends2 = genPstmt.executeQuery();
+			
+			// If stillFriends has anything in it, stillFriends
+			// Else, the requestee is no longer friends with requester
+			if(stillFriends1.next() || stillFriends1.next()){
+				//check for request in table
+				String checkrequestQuery = "select requester from location_request " +
+						"where requester = ? " +
+						"and requestee = ?";
+				genPstmt = connection.prepareStatement(checkrequestQuery);
+				genPstmt.setString(1, screenname);
+				genPstmt.setString(2, friendScreenname);
+				ResultSet requestExists = genPstmt.executeQuery();
+				
+				//check other side of table??????????
+				String checkrequestFromFriendQuery = "select * from friend_request " +
+						"where requester = ? " +
+						"and requestee = ?";
+				genPstmt = connection.prepareStatement(checkrequestFromFriendQuery);
+				genPstmt.setString(1, friendScreenname);
+				genPstmt.setString(2, screenname);
+				ResultSet requestExistsFlipped = genPstmt.executeQuery();
+				
+				// If requestExists has anything in it, location_request exists
+				// Else, the location_request does not exist
+				if(requestExists.next() || requestExistsFlipped.next()){
+					// Prints request present
+					jta.append("User " + screenname + " has already requested user " + friendScreenname + " location\n");
+					//update??????????????
+					outputInt = -1;
+				}else{
+					// Prints requesting location
+					jta.append("User " + screenname + " has requested user " + friendScreenname + " location\n");
+					// Prepares the statement for Insert
+					String registerString = "INSERT INTO location_request VALUES (?, ?) ";
+					genPstmt = connection.prepareStatement(registerString);
+					
+					// Adds values to prepared statements
+					genPstmt.setString(1,  screenname);
+					genPstmt.setString(2,  friendScreenname);
+					
+					// Executes query
+					genPstmt.execute();
+					outputInt = 0;
+				}
+
+			}else{
+				jta.append("User " + screenname + " is not friends with " + friendScreenname + "\n");
+				outputInt = -1;
+			}
 		}
 		
 		public void respondFriend() {
