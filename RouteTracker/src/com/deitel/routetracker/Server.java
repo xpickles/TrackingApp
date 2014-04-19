@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.text.Collator;
 import java.util.*;
 import java.util.Date;
 import java.awt.*;
@@ -182,8 +183,6 @@ public class Server extends JFrame {
 						
 						break;
 					case 8:  // Get Friends
-						//TODO
-						
 						screenname = inputFromClient.readUTF();
 						
 						getFriends();
@@ -355,7 +354,8 @@ public class Server extends JFrame {
 							String registerString = "INSERT INTO friends_with VALUES (?, ?) ";
 							genPstmt = connection.prepareStatement(registerString);
 							
-							if (screenname.compareTo(friendScreenname) < 0) {
+							Collator collator = Collator.getInstance();
+							if (collator.compare(screenname,friendScreenname) < 0) {
 								// Adds values to prepared statements
 								genPstmt.setString(1,  screenname);
 								genPstmt.setString(2,  friendScreenname);
@@ -443,11 +443,12 @@ public class Server extends JFrame {
 		public void deleteFriend(){
 			try {	
 				
-				String deleteQuery = "select screenname from users " +
+				String deleteQuery = "delete from friends_with " +
 						"where screenname1 = ? AND screenname2 = ?";
 				genPstmt = connection.prepareStatement(deleteQuery);
 				
-				if(screenname.compareTo(friendScreenname) < 0){
+				Collator collator = Collator.getInstance();
+				if (collator.compare(screenname,friendScreenname) < 0){
 					genPstmt.setString(1, screenname);
 					genPstmt.setString(2, friendScreenname);
 				}
@@ -576,7 +577,8 @@ public class Server extends JFrame {
 					genPstmt = connection.prepareStatement(respondString);
 					
 					// Adds friends into table in compared alphabetically
-					if (screenname.compareTo(friendScreenname) < 0) {
+					Collator collator = Collator.getInstance();
+					if (collator.compare(screenname,friendScreenname) < 0) {
 						genPstmt.setString(1,  screenname);
 						genPstmt.setString(2,  friendScreenname);
 					} else {
@@ -587,10 +589,13 @@ public class Server extends JFrame {
 					// Executes query
 					genPstmt.execute();
 					jta.append(screenname + " is now friends with " + 
-							friendScreenname);
+							friendScreenname + "\n");
 					outputInt = 0;
 				} 
-				
+				else{
+					jta.append(screenname + " denied being friends with " + 
+							friendScreenname + "\n");
+				}
 				// Accepted or Denied, Request is Deleted
 				String deleteRequest = "Delete from friend_request " +
 					"where requester = ? and requestee = ?";
@@ -599,8 +604,7 @@ public class Server extends JFrame {
 				genPstmt.setString(2, screenname);
 				genPstmt.execute();
 				outputInt = 0;
-				jta.append(screenname + " denied being friends with " + 
-						friendScreenname);
+				
 				
 			} catch (SQLException ex) {
 				jta.append("Error in registering User " + screenname + "\n");
@@ -620,14 +624,53 @@ public class Server extends JFrame {
 		}
 		
 		public void getFriends() {
-			//TODO
 			
-			/* String result = ""
-			 * Query friends table 
-			 * 1st: query for screenname on right side ordered by alphabet
-			 * result += rset.next() + "//"
-			 * 2nd: query for screenname on left side ordered by alphabet
-			 * result += rset.next() + "//"*/
+			String result = "";
+			try {
+				jta.append(screenname + " trying to get friends\n");
+				String friendQuery = "select screenname1 from friends_with " +
+						"where screenname2 = ?";
+				genPstmt = connection.prepareStatement(friendQuery);				
+				genPstmt.setString(1, screenname);				
+				
+				ResultSet friends = genPstmt.executeQuery();			
+				
+				while(friends.next()){
+					result += friends.getString("screenname1") + "/";
+				}
+				
+				friendQuery = "select screenname2 from friends_with " +
+						"where screenname1 = ?";
+				genPstmt = connection.prepareStatement(friendQuery);				
+				genPstmt.setString(1, screenname);				
+				
+				friends = genPstmt.executeQuery();
+				while(friends.next()){
+					result += friends.getString("screenname2") + "/";
+				}
+				
+				result = result.substring(0, result.length()-1);				
+				
+				jta.append(screenname + " receivedfriends\n");
+				
+				outputInt = 0;
+				
+			} catch (SQLException ex) {
+				jta.append("Error getting User " + screenname + "'s notifications\n");
+	            ex.printStackTrace();
+	            outputInt = -1;
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+				outputToClient.writeInt(outputInt);
+				outputToClient.writeUTF(result);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
 		}
 		
 		public void getNotifications() {
@@ -701,4 +744,3 @@ public class Server extends JFrame {
 		}
 	}
 }
-
