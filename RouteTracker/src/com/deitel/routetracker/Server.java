@@ -420,7 +420,7 @@ public class Server extends JFrame {
 				ResultSet requestExists = genPstmt.executeQuery();
 				
 				if (!requestExists.next()) {
-					String addRequest = "Insert ";
+					String addRequest = "Insert into location_request ";
 				}
 				
 			} catch (SQLException ex) {
@@ -648,9 +648,10 @@ public class Server extends JFrame {
 				while(friends.next()){
 					result += friends.getString("screenname2") + "/";
 				}
-				
-				result = result.substring(0, result.length()-1);				
-				
+				if (!result.equals("")) {
+					result = result.substring(0, result.length()-1);	
+				}
+							
 				jta.append(screenname + " receivedfriends\n");
 				
 				outputInt = 0;
