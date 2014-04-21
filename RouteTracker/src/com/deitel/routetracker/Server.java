@@ -144,7 +144,7 @@ public class Server extends JFrame {
 						
 						break;
 					case 4:  // Request Location
-						//TODO
+						
 						// Reads users information from client
 						screenname = inputFromClient.readUTF();
 						friendScreenname = inputFromClient.readUTF();
@@ -174,7 +174,7 @@ public class Server extends JFrame {
 						
 						break;
 					case 7:  // Respond to Friend Request
-						//TODO						
+						
 						friendScreenname = inputFromClient.readUTF();
 						screenname = inputFromClient.readUTF();
 						response = inputFromClient.readBoolean();
@@ -196,7 +196,6 @@ public class Server extends JFrame {
 						break;
 					case 10:  // Get Location
 						//TODO
-						
 						screenname = inputFromClient.readUTF();
 						
 						getLocation();
@@ -204,6 +203,8 @@ public class Server extends JFrame {
 						break;
 						
 					case 11: // Done as soon logged in
+						
+						screenname = inputFromClient.readUTF();
 						getFriends();
 						getNotifications();
 						getLocation();
@@ -410,17 +411,62 @@ public class Server extends JFrame {
 		}
 		
 		public void requestLocation() {
-			//TODO
+
 			try {
-				String checkQuery = "Select * from location_request " +
+				String checkQuery = "Select * from friends_with" +
 					"where requester = ? and requestee = ?";
 				genPstmt = connection.prepareStatement(checkQuery);
-				genPstmt.setString(1, screenname);
-				genPstmt.setString(2, friendScreenname);
-				ResultSet requestExists = genPstmt.executeQuery();
 				
-				if (!requestExists.next()) {
-					String addRequest = "Insert into location_request ";
+				// Adds friends into table in compared alphabetically
+				Collator collator = Collator.getInstance();
+				if (collator.compare(screenname,friendScreenname) < 0) {
+					genPstmt.setString(1, screenname);
+					genPstmt.setString(2, friendScreenname);
+				} else {
+					genPstmt.setString(1, friendScreenname);
+					genPstmt.setString(2, screenname);
+				}
+				
+				ResultSet areFriends = genPstmt.executeQuery();
+				
+				if (areFriends.next()) {
+					checkQuery = "Select * from location_request " +
+						"where requester = ? and requestee = ?";
+					genPstmt = connection.prepareStatement(checkQuery);
+					genPstmt.setString(1, screenname);
+					genPstmt.setString(2, friendScreenname);
+					ResultSet requestExists = genPstmt.executeQuery();
+					
+					if (!requestExists.next()) {
+						String addRequest = "Insert into location_request " +
+						"values (?, ?)";
+						genPstmt = connection.prepareStatement(addRequest);
+						genPstmt.setString(1, screenname);
+						genPstmt.setString(2, friendScreenname);
+						genPstmt.execute();
+						jta.append(screenname + " has requested the location of " +
+								friendScreenname);
+						outputInt = 0;
+					} else {
+						String addRequest = "Delete from location_request " +
+						"where requester = ? and requestee = ?";
+						genPstmt = connection.prepareStatement(addRequest);
+						genPstmt.setString(1, screenname);
+						genPstmt.setString(2, friendScreenname);
+						genPstmt.execute();
+						addRequest = "Insert into location_request " +
+						"values (?, ?)";
+						genPstmt = connection.prepareStatement(addRequest);
+						genPstmt.setString(1, screenname);
+						genPstmt.setString(2, friendScreenname);
+						genPstmt.execute();	
+						jta.append(screenname + " has requested the location of " +
+								friendScreenname + ", which updated the time");
+						outputInt = 0;
+					}
+				} else {
+					jta.append("Error in adding " + friendScreenname + " for " +
+							screenname);
 				}
 				
 			} catch (SQLException ex) {
@@ -485,6 +531,9 @@ public class Server extends JFrame {
 		
 		public void respondLocation() {
 			try {
+				 /*UPDATE table_name
+				SET column1=value1,column2=value2,...
+				WHERE some_column=some_value; */
 			//TODO Russell 
 			//check that requestee and requester are still friends
  			String checkrequestQuery = "select requester from friends_with " +
@@ -726,6 +775,34 @@ public class Server extends JFrame {
 		
 		public void getLocation() {
 			//TODO
+			try {
+				String checkQuery = "Select * from accepted_location_request " +
+					"where requester = ?";
+				genPstmt = connection.prepareStatement(checkQuery);
+				genPstmt.setString(1, screenname);
+				ResultSet rset = genPstmt.executeQuery();
+				
+				if (rset.next()) {
+					try {
+						outputToClient.writeDouble(v)
+					}
+				}
+				
+			} catch (SQLException ex) {
+				jta.append("Error in registering User " + screenname + "\n");
+	            ex.printStackTrace();
+	            outputInt = -1;
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+				outputToClient.writeInt(outputInt);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
 		}
 	}
 	
