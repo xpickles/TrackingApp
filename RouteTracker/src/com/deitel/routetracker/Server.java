@@ -774,7 +774,6 @@ public class Server extends JFrame {
 		}
 		
 		public void getLocation() {
-			//TODO
 			try {
 				String checkQuery = "Select * from accepted_location_request " +
 					"where requester = ?";
@@ -783,8 +782,20 @@ public class Server extends JFrame {
 				ResultSet rset = genPstmt.executeQuery();
 				
 				if (rset.next()) {
-					try {
-						outputToClient.writeDouble(v)
+					String requestee = rset.getString("requestee");
+					checkQuery = "Select * from users where screenname = ?";
+					genPstmt = connection.prepareStatement(checkQuery);
+					genPstmt.setString(1, requestee);
+					rset = genPstmt.executeQuery();
+					
+					if (rset.next()) {
+						try {
+							outputToClient.writeDouble(rset.getDouble("last_known_lat"));
+							outputToClient.writeDouble(rset.getDouble("last_known_long"));
+							outputInt = 0;
+						} catch (Exception ex) {
+							outputInt = -1;
+						}
 					}
 				}
 				
