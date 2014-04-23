@@ -163,7 +163,7 @@ public class Server extends JFrame {
 						
 						break;
 					case 6:  // Respond to Location Request
-						//TODO
+
 						friendScreenname = inputFromClient.readUTF();
 						screenname = inputFromClient.readUTF();
 						lastKnownLat = inputFromClient.readDouble();
@@ -195,7 +195,7 @@ public class Server extends JFrame {
 						
 						break;
 					case 10:  // Get Location
-						//TODO
+
 						screenname = inputFromClient.readUTF();
 						
 						getLocation();
@@ -208,9 +208,7 @@ public class Server extends JFrame {
 						getFriends();
 						getNotifications();
 						getLocation();
-				}
-				
-				
+				}				
 			}
 			catch(IOException e) {
 				System.err.println(e);
@@ -322,7 +320,7 @@ public class Server extends JFrame {
 				// Else, the screenname does not exist
 				if(userExists.next()){
 					//check for request in request table
-					String checkrequestQuery = "select requester from friend_request " +
+					String checkrequestQuery = "select * from friend_request " +
 							"where requester = ? " +
 							"and requestee = ?";
 					genPstmt = connection.prepareStatement(checkrequestQuery);
@@ -336,7 +334,7 @@ public class Server extends JFrame {
 						// Prints that screen name has been added into database
 						jta.append("User " + screenname + " has already requested user " + friendScreenname + "\n");
 						outputInt = -1;
-					}else{
+					} else {
 						//check for request in request table
 						String checkrequestFromFriendQuery = "select * from friend_request " +
 								"where requester = ? " +
@@ -467,6 +465,7 @@ public class Server extends JFrame {
 				} else {
 					jta.append("Error in adding " + friendScreenname + " for " +
 							screenname);
+					outputInt = -1;
 				}
 				
 			} catch (SQLException ex) {
@@ -513,7 +512,7 @@ public class Server extends JFrame {
 				outputInt = 0;
 				
 			} catch (SQLException ex) {
-				jta.append("Error in registering User " + screenname + "\n");
+				jta.append("Error in deleting " + friendScreenname + "\n");
 	            ex.printStackTrace();
 	            outputInt = -1;
 			} catch (Exception ex) {
@@ -531,78 +530,42 @@ public class Server extends JFrame {
 		
 		public void respondLocation() {
 			try {
-				 /*UPDATE table_name
-				SET column1=value1,column2=value2,...
-				WHERE some_column=some_value; */
-			//TODO Russell 
-			//check that requestee and requester are still friends
- 			String checkrequestQuery = "select requester from friends_with " +
- 					"where screenname = ? " +
- 					"and friendScreenname = ?";
- 			genPstmt = connection.prepareStatement(checkrequestQuery);
- 			genPstmt.setString(1, screenname);
- 			genPstmt.setString(2, friendScreenname);
- 			ResultSet stillFriends1 = genPstmt.executeQuery();
- 			
- 			//check other side of the table?????????
- 			checkrequestQuery = "select requester from friends_with " +
- 					"where screenname = ? " +
- 					"and friendScreenname = ?";
- 			genPstmt = connection.prepareStatement(checkrequestQuery);
- 			genPstmt.setString(1, friendScreenname);
- 			genPstmt.setString(2, screenname);
- 			ResultSet stillFriends2 = genPstmt.executeQuery();
- 			
- 			// If stillFriends has anything in it, stillFriends
- 			// Else, the requestee is no longer friends with requester
- 			if(stillFriends1.next() || stillFriends1.next()){
- 				//check for request in table
- 				checkrequestQuery = "select requester from location_request " +
- 						"where requester = ? " +
- 						"and requestee = ?";
- 				genPstmt = connection.prepareStatement(checkrequestQuery);
- 				genPstmt.setString(1, screenname);
- 				genPstmt.setString(2, friendScreenname);
- 				ResultSet requestExists = genPstmt.executeQuery();
- 				
- 				//check other side of table??????????
- 				String checkrequestFromFriendQuery = "select * from friend_request " +
- 						"where requester = ? " +
- 						"and requestee = ?";
- 				genPstmt = connection.prepareStatement(checkrequestFromFriendQuery);
- 				genPstmt.setString(1, friendScreenname);
- 				genPstmt.setString(2, screenname);
- 				ResultSet requestExistsFlipped = genPstmt.executeQuery();
- 				
- 				// If requestExists has anything in it, location_request exists
- 				// Else, the location_request does not exist
- 				if(requestExists.next() || requestExistsFlipped.next()){
- 					// Prints request present
- 					jta.append("User " + screenname + " has already requested user " + friendScreenname + " location\n");
- 					//update??????????????
- 					outputInt = -1;
- 				}else{
- 					// Prints requesting location
- 					jta.append("User " + screenname + " has requested user " + friendScreenname + " location\n");
- 					// Prepares the statement for Insert
- 					String registerString = "INSERT INTO location_request VALUES (?, ?) ";
- 					genPstmt = connection.prepareStatement(registerString);
- 					
- 					// Adds values to prepared statements
- 					genPstmt.setString(1,  screenname);
- 					genPstmt.setString(2,  friendScreenname);
- 					
- 					// Executes query
- 					genPstmt.execute();
- 					outputInt = 0;
- 				}
- 
- 			}else{
- 				jta.append("User " + screenname + " is not friends with " + friendScreenname + "\n");
- 				outputInt = -1;
- 			}
+				// If request is accepted
+				 if (response) {
+					 // Update users last known location
+					 String respondString = "Update users " +
+					 			"Set last_known_lat = ?, " +
+					 			"Set last_known_long = ?";
+					 genPstmt = connection.prepareStatement(respondString);
+					 genPstmt.setDouble(1, lastKnownLat);
+					 genPstmt.setDouble(2, lastKnownLong);
+					 genPstmt.execute();
+					 jta.append("Location updated for " + screenname);
+					 
+					 // Show that the request has been accepted
+					 respondString = "Insert into accepted_location_request values (?, ?)";
+					 genPstmt = connection.prepareStatement(respondString);
+					 genPstmt.setString(1, friendScreenname);
+					 genPstmt.setString(2, screenname);
+					 genPstmt.execute();
+					 jta.append("Request for location from " + friendScreenname +
+							 " to " + screenname + " accepted");
+				 }
+				 
+				 // Delete request whether request was accepted or rejected
+				 String deleteRequest = "Delete from location_request " + 
+				 			"where requester = ? and requestee = ?";
+				 genPstmt = connection.prepareStatement(deleteRequest);
+				 genPstmt.setString(1, friendScreenname);
+				 genPstmt.setString(2, screenname);
+				 genPstmt.execute();
+				 jta.append("Request for location from " + friendScreenname +
+							 " to " + screenname + " deleted");
+				 outputInt = 0;
+				 
 			} catch (SQLException ex) {
-				jta.append("Error in registering User " + screenname + "\n");
+				jta.append("Error in responding to location request " +
+						"for " + screenname + "\n");
 	            ex.printStackTrace();
 	            outputInt = -1;
 			} catch (Exception ex) {
@@ -656,7 +619,7 @@ public class Server extends JFrame {
 				
 				
 			} catch (SQLException ex) {
-				jta.append("Error in registering User " + screenname + "\n");
+				jta.append("Error in requesting friend for " + screenname + "\n");
 	            ex.printStackTrace();
 	            outputInt = -1;
 			} catch (Exception ex) {
@@ -701,12 +664,12 @@ public class Server extends JFrame {
 					result = result.substring(0, result.length()-1);	
 				}
 							
-				jta.append(screenname + " receivedfriends\n");
+				jta.append(screenname + " received friends\n");
 				
 				outputInt = 0;
 				
 			} catch (SQLException ex) {
-				jta.append("Error getting User " + screenname + "'s notifications\n");
+				jta.append("Error getting User " + screenname + "'s friends\n");
 	            ex.printStackTrace();
 	            outputInt = -1;
 			} catch (Exception ex) {
@@ -800,7 +763,7 @@ public class Server extends JFrame {
 				}
 				
 			} catch (SQLException ex) {
-				jta.append("Error in registering User " + screenname + "\n");
+				jta.append("Error in getting " + screenname + "'s location\n");
 	            ex.printStackTrace();
 	            outputInt = -1;
 			} catch (Exception ex) {
