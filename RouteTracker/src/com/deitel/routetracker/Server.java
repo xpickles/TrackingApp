@@ -409,7 +409,7 @@ public class Server extends JFrame {
 
 			try {
 				// makes sure users are friends
-				String checkQuery = "Select * from friends_with" +
+				String checkQuery = "Select * from friends_with " +
 					"where requester = ? "+
 					"and requestee = ?";
 				genPstmt = connection.prepareStatement(checkQuery);
