@@ -230,7 +230,7 @@ public class Server extends JFrame {
 				// Else, the screenname is added
 				if(rset.next()){
 					jta.append("User " + screenname + " already exists\n");
-					outputInt = -1;
+					outputInt = -2;
 				} else {
 
 					// Prepares the statement for Insert
@@ -284,11 +284,11 @@ public class Server extends JFrame {
 				// If rset has anything in it, log in
 				// Else, the screenname does not exist, do not log in
 				if(rset.next()){
-					jta.append("signing in " + screenname + "...\n");
+					jta.append("Signing in " + screenname + "...\n");
 					outputInt = 0;
 				} else {
-					jta.append("user " + screenname + "does not exist\n");
-					outputInt = -1;
+					jta.append("User " + screenname + "does not exist\n");
+					outputInt = -3;
 				}
 
 			} catch (SQLException ex) {
@@ -334,8 +334,9 @@ public class Server extends JFrame {
 					// If requestExists has anything in it, friend_request exists
 					// Else, the friend_request does not exist
 					if(requestExists.next()){
-						jta.append("User " + screenname + " has already requested user " + friendScreenname + "\n");
-						outputInt = -1;
+						jta.append("User " + screenname + " has already requested user " +
+								friendScreenname + "\n");
+						outputInt = -4;
 					} else {
 						//check for request in request table on other side
 						String checkrequestFromFriendQuery = "select * from friend_request " +
@@ -363,7 +364,8 @@ public class Server extends JFrame {
 							}
 
 							genPstmt.execute();
-							jta.append("User " + screenname + " is friends with user" + friendScreenname + "\n");
+							jta.append("User " + screenname + " is friends with User" +
+									friendScreenname + "\n");
 							outputInt = 0;
 						}else{
 							// Prepares the statement for Insert
@@ -374,18 +376,20 @@ public class Server extends JFrame {
 							genPstmt.setString(2,  friendScreenname);
 
 							genPstmt.execute();
-							jta.append("User " + screenname + " has requested user " + friendScreenname + " to be his friend\n");
+							jta.append("User " + screenname + " has requested User " +
+									friendScreenname + " to be friends\n");
 							outputInt = 0;
 						}
 					}
 
 				} else {
 					jta.append("User " + friendScreenname + " does not exist\n");
-					outputInt = -1;
+					outputInt = -5;
 				}
 
 			} catch (SQLException ex) {
-				jta.append("Error in requesting friend " + friendScreenname + "\n");
+				jta.append("Error in requesting friendship with User " +
+						friendScreenname + "\n");
 	            ex.printStackTrace();
 	            outputInt = -1;
 			} catch (Exception ex) {
@@ -445,7 +449,8 @@ public class Server extends JFrame {
 						genPstmt.setString(2, friendScreenname);
 						genPstmt.execute();
 
-						jta.append(screenname + " has requested the location of " + friendScreenname);
+						jta.append(screenname + " has requested the location of " +
+								friendScreenname + "\n");
 						outputInt = 0;
 					} else {
 						//delete location request
@@ -464,16 +469,19 @@ public class Server extends JFrame {
 						genPstmt.setString(2, friendScreenname);
 						genPstmt.execute();
 
-						jta.append(screenname + " has requested the location of " + friendScreenname + ", which updated the time");
+						jta.append(screenname + " has requested the location of " +
+								friendScreenname + ", which updated the time\n");
 						outputInt = 0;
 					}
 				} else {
-					jta.append("Error in adding " + friendScreenname + " for " + screenname);
-					outputInt = -1;
+					jta.append("Error in requesting location of " + friendScreenname +
+							" for " + screenname + "\n");
+					outputInt = -6;
 				}
 
 			} catch (SQLException ex) {
-				jta.append("Error in registering User " + screenname + "\n");
+				jta.append("Error in requesting location of User " + friendScreenname +
+						" for " + screenname + "\n");
 				ex.printStackTrace();
 				outputInt = -1;
 			} catch (Exception ex) {
@@ -513,7 +521,8 @@ public class Server extends JFrame {
 				if(deletes > 0)
 					jta.append("User " + screenname + " deleted " + friendScreenname + "\n");
 				else
-					jta.append("User " + screenname + " failed to delete " + friendScreenname + "because he was not friends\n");
+					jta.append("User " + screenname + " failed to delete " + 
+							friendScreenname + "because friendship did not exist\n");
 
 				outputInt = 0;
 
@@ -547,8 +556,8 @@ public class Server extends JFrame {
 					 genPstmt.setDouble(2, lastKnownLong);
 					 genPstmt.execute();
 
-					 jta.append("Location updated for " + screenname);
-
+					 jta.append("Location updated for " + screenname + "\n");
+					
 					 // add location request to accepted table
 					 respondString = "Insert into accepted_location_request values (?, ?)";
 					 genPstmt = connection.prepareStatement(respondString);
@@ -556,7 +565,8 @@ public class Server extends JFrame {
 					 genPstmt.setString(2, screenname);
 					 genPstmt.execute();
 
-					 jta.append("Request for location from " + friendScreenname + " to " + screenname + " accepted");
+					 jta.append("Request for location from " + friendScreenname + " to " +
+							 screenname + " accepted\n");
 				 }
 
 				 // Delete request whether request was accepted or rejected
@@ -567,7 +577,8 @@ public class Server extends JFrame {
 				 genPstmt.setString(2, screenname);
 				 genPstmt.execute();
 
-				 jta.append("Request for location from " + friendScreenname + " to " + screenname + " deleted");
+				 jta.append("Request for location from " + friendScreenname + 
+						 " to " + screenname + " deleted\n");
 				 outputInt = 0;
 
 			} catch (SQLException ex) {
@@ -610,7 +621,8 @@ public class Server extends JFrame {
 					outputInt = 0;
 				}
 				else{
-					jta.append(screenname + " denied being friends with " + friendScreenname + "\n");
+					jta.append(screenname + " denied being friends with " +
+							friendScreenname + "\n");
 				}
 				// Accepted or Denied, Request is Deleted
 				String deleteRequest = "Delete from friend_request " +
@@ -623,7 +635,7 @@ public class Server extends JFrame {
 				outputInt = 0;
 
 			} catch (SQLException ex) {
-				jta.append("Error in requesting friend for " + screenname + "\n");
+				jta.append("Error in responding to friend request for " + screenname + "\n");
 	            ex.printStackTrace();
 	            outputInt = -1;
 			} catch (Exception ex) {
@@ -673,7 +685,7 @@ public class Server extends JFrame {
 					result += friends.getString("screenname2") + "/";
 				}
 				
-				//im not 100% sure what this does
+				//Eliminates the "/" at the end of the friend string
 				if (!result.equals("")) {
 					result = result.substring(0, result.length()-1);
 				}
@@ -682,7 +694,7 @@ public class Server extends JFrame {
 				outputInt = 0;
 
 			} catch (SQLException ex) {
-				jta.append("Error getting User " + screenname + "'s friends\n");
+				jta.append("Error while getting User " + screenname + "'s friends\n");
 	            ex.printStackTrace();
 	            outputInt = -1;
 			} catch (Exception ex) {
@@ -733,7 +745,7 @@ public class Server extends JFrame {
 					result += friendRequests.getString("requester") + "/";
 				}
 				
-				//not 100% sure what this does
+				//Eliminates ending "/"
 				result = result.substring(0, result.length()-1);
 
 				jta.append(screenname + " received notifications\n");
@@ -777,14 +789,14 @@ public class Server extends JFrame {
 					rset = genPstmt.executeQuery();
 
 					//if there is a profile then get lat and long
-					//else the profile doesn't excist
+					//else the profile doesn't exist
 					if (rset.next()) {
 						try {
 							outputToClient.writeDouble(rset.getDouble("last_known_lat"));
 							outputToClient.writeDouble(rset.getDouble("last_known_long"));
 							outputInt = 0;
 						} catch (Exception ex) {
-							outputInt = -1;
+							outputInt = -7;
 						}
 					}
 				}
