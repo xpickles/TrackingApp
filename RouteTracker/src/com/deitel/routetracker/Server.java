@@ -410,8 +410,8 @@ public class Server extends JFrame {
 			try {
 				// makes sure users are friends
 				String checkQuery = "Select * from friends_with " +
-					"where requester = ? "+
-					"and requestee = ?";
+					"where screenname1 = ? "+
+					"and screenname2 = ?";
 				genPstmt = connection.prepareStatement(checkQuery);
 
 				Collator collator = Collator.getInstance();
@@ -550,10 +550,12 @@ public class Server extends JFrame {
 					 // Update users last known location
 					 String respondString = "Update users " +
 					 			"Set last_known_lat = ?, " +
-					 			"Set last_known_long = ?";
+					 			"last_known_long = ? " +
+					 			"Where screenname = ?";
 					 genPstmt = connection.prepareStatement(respondString);
 					 genPstmt.setDouble(1, lastKnownLat);
 					 genPstmt.setDouble(2, lastKnownLong);
+					 genPstmt.setString(3, screenname);
 					 genPstmt.execute();
 
 					 jta.append("Location updated for " + screenname + "\n");
