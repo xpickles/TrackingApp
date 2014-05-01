@@ -282,13 +282,13 @@ public class Server extends JFrame {
 				ResultSet rset = genPstmt.executeQuery();
 
 				// If rset has anything in it, log in
-				// Else, the screenname does not exist, do not log in
+				// Else, the screenname does not match the password, do not log in
 				if(rset.next()){
 					jta.append("Signing in " + screenname + "...\n");
 					outputInt = 0;
 				} else {
-					jta.append("User " + screenname + "does not exist\n");
-					outputInt = -3;
+					jta.append("User " + screenname + "does not have that password or does not exist\n");
+					outputInt = -3;//screen name does not match password. it still could exist
 				}
 
 			} catch (SQLException ex) {
@@ -475,7 +475,7 @@ public class Server extends JFrame {
 					}
 				} else {
 					jta.append("Error in requesting location of " + friendScreenname +
-							" for " + screenname + "\n");
+							" for " + screenname + ", you are not friends or " + friendScreenname+" does not exist\n");
 					outputInt = -6;
 				}
 
