@@ -775,10 +775,10 @@ public class Server extends JFrame {
 		public void getLocation() {
 			try {
 				//get the profile of the friend your trying to find
-				checkQuery = "Select * from users where screenname = ?";
+				String checkQuery = "Select * from users where screenname = ?";
 				genPstmt = connection.prepareStatement(checkQuery);
 				genPstmt.setString(1, friendScreenname);
-				rset = genPstmt.executeQuery();
+				ResultSet rset = genPstmt.executeQuery();
 
 				//if there is a profile then get lat and long
 				//else the profile doesn't exist
@@ -797,8 +797,6 @@ public class Server extends JFrame {
 							"where requester = ? " +
 							"AND requestee = ?";
 					genPstmt = connection.prepareStatement(deleteQuery);
-	
-					Collator collator = Collator.getInstance();
 					genPstmt.setString(1, screenname);
 					genPstmt.setString(2, friendScreenname);
 					int deletes = genPstmt.executeUpdate();
