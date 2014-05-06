@@ -197,6 +197,7 @@ public class Server extends JFrame {
 					case 10:  // Get Location
 
 						screenname = inputFromClient.readUTF();
+						friendScreenname = inputFromClient.readUTF();
 						
 						getLocation();
 						
@@ -773,40 +774,44 @@ public class Server extends JFrame {
 
 		public void getLocation() {
 			try {
-				//get friends that have accepted your location requests
-				String checkQuery = "Select * from accepted_location_request " +
-					"where requester = ?";
+				//get the profile of the friend your trying to find
+				checkQuery = "Select * from users where screenname = ?";
 				genPstmt = connection.prepareStatement(checkQuery);
-				genPstmt.setString(1, screenname);
-				ResultSet rset = genPstmt.executeQuery();
+				genPstmt.setString(1, friendScreenname);
+				rset = genPstmt.executeQuery();
 
-				//if there is anything in rset then friends have accepted your request
-				//else no friends have accepted your request
+				//if there is a profile then get lat and long
+				//else the profile doesn't exist
 				if (rset.next()) {
-					//get the profile of the friend your trying to find
-					String requestee = rset.getString("requestee");
-					checkQuery = "Select * from users where screenname = ?";
-					genPstmt = connection.prepareStatement(checkQuery);
-					genPstmt.setString(1, requestee);
-					rset = genPstmt.executeQuery();
-
-					//if there is a profile then get lat and long
-					//else the profile doesn't exist
-					if (rset.next()) {
-						try {
-							outputToClient.writeDouble(rset.getDouble("last_known_lat"));
-							outputToClient.writeDouble(rset.getDouble("last_known_long"));
-							outputInt = 0;
-						} catch (Exception ex) {
-							outputInt = -7;
-						}
+					try {
+						outputToClient.writeDouble(rset.getDouble("last_known_lat"));
+						outputToClient.writeDouble(rset.getDouble("last_known_long"));
+						outputInt = 0;
+					} catch (Exception ex) {
+						outputInt = -7;
 					}
 				}
-
-			} catch (SQLException ex) {
-				jta.append("Error in getting " + screenname + "'s location\n");
-	            ex.printStackTrace();
-	            outputInt = -1;
+				//delete accepted location request from table
+				try{
+					String deleteQuery = "delete from accepted_location_request " +
+							"where requester = ? " +
+							"AND requestee = ?";
+					genPstmt = connection.prepareStatement(deleteQuery);
+	
+					Collator collator = Collator.getInstance();
+					genPstmt.setString(1, screenname);
+					genPstmt.setString(2, friendScreenname);
+					int deletes = genPstmt.executeUpdate();
+	
+					//if deletes is > 0 then accepted location request was deleted
+					//else request was not found
+					if(deletes > 0)
+						jta.append("User " + screenname + " deleted " + friendScreenname + "'s accepted location request\n");
+				} catch (SQLException ex) {
+					jta.append("Error in deleting " + friendScreenname + "\n");
+		            ex.printStackTrace();
+		            outputInt = -1;
+				}
 			} catch (Exception ex) {
 				jta.append("Unknown error has occur\n");
 				ex.printStackTrace();
