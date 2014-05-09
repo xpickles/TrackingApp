@@ -203,12 +203,10 @@ public class Server extends JFrame {
 						
 						break;
 						
-					case 11: // Done as soon logged in
+					case 11: // Checks number of notifications
 						
 						screenname = inputFromClient.readUTF();
-						getFriends();
-						getNotifications();
-						getLocation();
+						checkNotifications();
 				}				
 			}
 			catch(IOException e) {
@@ -283,13 +281,13 @@ public class Server extends JFrame {
 				ResultSet rset = genPstmt.executeQuery();
 
 				// If rset has anything in it, log in
-				// Else, the screenname does not match the password, do not log in
+				// Else, the screenname does not exist, do not log in
 				if(rset.next()){
 					jta.append("Signing in " + screenname + "...\n");
 					outputInt = 0;
 				} else {
-					jta.append("User " + screenname + "does not have that password or does not exist\n");
-					outputInt = -3;//screen name does not match password. it still could exist
+					jta.append("User " + screenname + "does not exist\n");
+					outputInt = -3;
 				}
 
 			} catch (SQLException ex) {
@@ -476,7 +474,7 @@ public class Server extends JFrame {
 					}
 				} else {
 					jta.append("Error in requesting location of " + friendScreenname +
-							" for " + screenname + ", you are not friends or " + friendScreenname+" does not exist\n");
+							" for " + screenname + "\n");
 					outputInt = -6;
 				}
 
@@ -716,10 +714,24 @@ public class Server extends JFrame {
 
 		public void getNotifications() {
 			//start location requests
-			String result = "location/";
+			String result = "acceptedLocation/";
 			try {
 				//get the users that have asked for your location
 				jta.append(screenname + " trying to get notifications\n");
+				
+				String acceptedLocationRequestQuery = "select requestee from accepted_location_request " +
+				        "where requester = ?";
+				genPstmt = connection.prepareStatement(acceptedLocationRequestQuery);
+				genPstmt.setString(1,screenname);
+				
+				ResultSet acceptedLocationRequests = genPstmt.executeQuery();
+				
+				while(acceptedLocationRequests.next()){
+					result += acceptedLocationRequests.getString("requestee") + "/";
+				}
+				
+				result += "location/";
+				
 				String locationRequestQuery = "select requester from location_request " +
 						"where requestee = ?";
 				genPstmt = connection.prepareStatement(locationRequestQuery);
@@ -822,7 +834,72 @@ public class Server extends JFrame {
 				}
 			}
 		}
+		
+		public void checkNotifications() {
+			//start location requests
+			int notifications = 0;
+			try {
+				//get the users that have asked for your location
+				jta.append(screenname + " checking notifications\n");
+				
+				String acceptedLocationRequestQuery = "select requestee from accepted_location_request " +
+				        "where requester = ?";
+				genPstmt = connection.prepareStatement(acceptedLocationRequestQuery);
+				genPstmt.setString(1,screenname);
+				
+				ResultSet acceptedLocationRequests = genPstmt.executeQuery();
+				
+				while(acceptedLocationRequests.next()){
+					notifications++;
+				}
+				
+				String locationRequestQuery = "select requester from location_request " +
+						"where requestee = ?";
+				genPstmt = connection.prepareStatement(locationRequestQuery);
+				genPstmt.setString(1, screenname);
+
+				ResultSet locationRequests = genPstmt.executeQuery();
+				
+				while(locationRequests.next()){
+					notifications++;
+				}			
+				
+				//get the users that have asked to be your friends
+				String friendRequestQuery = "select requester from friend_request " +
+						"where requestee = ?";
+				genPstmt = connection.prepareStatement(friendRequestQuery);
+				genPstmt.setString(1, screenname);
+
+				ResultSet friendRequests = genPstmt.executeQuery();
+				
+				//add everyone that requested to be you friend to result
+				while(friendRequests.next()){
+					notifications++;
+				}
+				
+				jta.append(screenname + " received notifications\n");
+				outputInt = 0;
+
+			} catch (SQLException ex) {
+				jta.append("Error getting User " + screenname + "'s notifications\n");
+	            ex.printStackTrace();
+	            outputInt = -1;
+			} catch (Exception ex) {
+				jta.append("Unknown error has occur\n");
+				ex.printStackTrace();
+				outputInt = -1;
+			} finally {
+				try {
+				outputToClient.writeInt(outputInt);
+				outputToClient.writeInt(notifications);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
+		}
 	}
+	
+	
 	
 	public void initializeDB() {
 		try {
